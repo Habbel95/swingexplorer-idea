@@ -1,0 +1,14 @@
+# IntelliJ
+/.idea/*
+!/.idea/codeStyles
+!/.idea/runConfigurations
+!/.idea/vcs.xml
+*.ipr
+*.iml
+*.iws
+
+# Gradle
+.gradle
+/build/
+gradle-app.setting
+!gradle-wrapper.jar

@@ -1,0 +1,37 @@
+package com.github.dhaberlah.swingexplorer;
+
+import com.intellij.execution.executors.DefaultRunExecutor;
+import org.jetbrains.annotations.NotNull;
+
+import javax.swing.*;
+import java.util.Objects;
+
+/**
+ * Defines a custom action to run swing explorer and connects it to our Runner
+ *
+ * @author w.glanzer, 25.09.2015
+ * @see Runner
+ */
+public class Executor extends DefaultRunExecutor {
+
+  public static final String ID = "Run-with-SE";
+  private static final ImageIcon _ICON = new ImageIcon(Objects.requireNonNull(Executor.class.getResource("run.png")));
+
+  @NotNull
+  @Override
+  public String getId() {
+    return ID;
+  }
+
+  @Override
+  public String getContextActionId() {
+    return Runner.ID;
+  }
+
+  @NotNull
+  @Override
+  public Icon getIcon() {
+    return _ICON;
+  }
+
+}
