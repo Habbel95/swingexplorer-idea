@@ -13,15 +13,16 @@ Then further modified by <a href="mailto:dominik@haberlah.eu">Dominik Haberlah</
 
 If you install this plugin you two small yellow icons in your toolbar.
 
-![](Toolbar old.png)
-![](Toolbar new.png)
+![](Toolbar_old.png)
+
+![](Toolbar_new.png)
 
 They get enabled, if a java run configuration was selected.  
 Click on it, and it will start your program, combined with the SwingExplorer.  
 
 If you select the debug icon, you have to click the "Attach debugger" in the console window.
 
-![](Attach%20debugger.png)
+![](Attach_debugger.png)
 
 The SwingExplorer will show up in a new window and looks like this:
 
