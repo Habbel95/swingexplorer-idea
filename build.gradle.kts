@@ -80,7 +80,9 @@ intellijPlatform {
 
     pluginVerification {
         ides {
-            recommended()
+            val localIdes = providers.gradleProperty("verifyIdePaths").orNull
+                ?.split(',')?.map(String::trim)?.filter(String::isNotEmpty).orEmpty()
+            if (localIdes.isNotEmpty()) localIdes.forEach { local(it) } else recommended()
         }
     }
 

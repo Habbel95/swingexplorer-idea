@@ -1,10 +1,11 @@
 package com.github.dhaberlah.swingexplorer;
 
 import com.intellij.execution.ExecutionException;
-import com.intellij.ide.plugins.*;
-import com.intellij.openapi.extensions.PluginId;
+import com.intellij.openapi.application.PathManager;
 import com.intellij.openapi.vfs.*;
-import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.*;
+
+import java.nio.file.*;
 
 /**
  * Dependency to external jar files
@@ -13,7 +14,6 @@ import org.jetbrains.annotations.NotNull;
  */
 class Dependencies {
 
-  private static final String PLUGIN_ID = "swingexplorer-plugin-v3";
   private VirtualFile swagJarFile;
   private VirtualFile swexplJarFile;
 
@@ -53,19 +53,19 @@ class Dependencies {
    * Searches the dependency files in plugin directory
    */
   private void initJarFiles() {
-    IdeaPluginDescriptor descriptor = PluginManagerCore.getPlugin(PluginId.getId(PLUGIN_ID));
-    if (descriptor != null) {
-      String url = VfsUtilCore.pathToUrl(descriptor.getPluginPath().toFile().getAbsolutePath());
+    String ownJar = PathManager.getJarPathForClass(Dependencies.class);
+    if (ownJar == null) return;
 
-      VirtualFile pluginDir = VirtualFileManager.getInstance().findFileByUrl(url);
-      if (pluginDir != null) {
-        VirtualFile lib = pluginDir.findChild("lib");
-        if (lib != null && lib.isDirectory()) {
-          swagJarFile = lib.findChild("swag.jar");
-          swexplJarFile = lib.findChild("swexpl.jar");
-        }
-      }
-    }
+    Path libDir = Paths.get(ownJar).getParent();
+    if (libDir == null) return;
+
+    swagJarFile = findFile(libDir.resolve("swag.jar"));
+    swexplJarFile = findFile(libDir.resolve("swexpl.jar"));
+  }
+
+  @Nullable
+  private static VirtualFile findFile(@NotNull Path pPath) {
+    return Files.isRegularFile(pPath) ? LocalFileSystem.getInstance().refreshAndFindFileByNioFile(pPath) : null;
   }
 
 }
