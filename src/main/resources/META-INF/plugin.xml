@@ -1,17 +1,19 @@
 <idea-plugin>
 
-<id>swingexplorer-plugin-v3</id>
+  <id>swingexplorer-plugin-v3</id>
   <name>SwingExplorer Integration v3</name>
   <vendor email="dominik@haberlah.eu">Dominik Haberlah</vendor>
 
   <depends>com.intellij.modules.platform</depends>
-  <depends>com.intellij.modules.java</depends>
+  <depends>com.intellij.java</depends>
 
   <extensions defaultExtensionNs="com.intellij">
     <executor implementation="com.github.dhaberlah.swingexplorer.Executor"/>
     <programRunner implementation="com.github.dhaberlah.swingexplorer.Runner"/>
     <executor implementation="com.github.dhaberlah.swingexplorer.DebugExecutor"/>
     <programRunner implementation="com.github.dhaberlah.swingexplorer.DebugRunner"/>
+
+    <notificationGroup id="SWEXP_NOTIFICATION" displayType="BALLOON"/>
   </extensions>
 
 </idea-plugin>

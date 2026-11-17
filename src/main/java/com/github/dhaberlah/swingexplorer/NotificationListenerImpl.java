@@ -3,14 +3,12 @@ package com.github.dhaberlah.swingexplorer;
 import com.intellij.execution.ExecutionException;
 import com.intellij.ide.impl.ProjectUtil;
 import com.intellij.notification.*;
-import com.intellij.openapi.application.ApplicationManager;
-import com.intellij.openapi.editor.*;
-import com.intellij.openapi.fileEditor.*;
-import com.intellij.openapi.fileEditor.ex.FileEditorProviderManager;
+import com.intellij.openapi.application.*;
+import com.intellij.openapi.fileEditor.OpenFileDescriptor;
 import com.intellij.openapi.project.Project;
-import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.psi.*;
 import com.intellij.psi.search.GlobalSearchScope;
+import com.intellij.util.concurrency.AppExecutorUtil;
 import org.jetbrains.annotations.NotNull;
 
 import javax.management.Notification;
@@ -42,7 +40,7 @@ class NotificationListenerImpl implements Runnable, NotificationListener {
    * @param pPort    Port to connect to
    */
   public static void create(@NotNull Project pProject, int pPort) {
-    new Thread(new NotificationListenerImpl(pProject, pPort), "tSwingExplorerConnectionThread").start();
+    ApplicationManager.getApplication().executeOnPooledThread(new NotificationListenerImpl(pProject, pPort));
   }
 
   @Override
@@ -64,10 +62,11 @@ class NotificationListenerImpl implements Runnable, NotificationListener {
   public void handleNotification(Notification notification, Object handback) {
     //noinspection unchecked
     Map<Object, Object> data = (Map<Object, Object>) notification.getUserData();
+    if (data == null) return;
     String className = (String) data.get("className");
-    int lineNumber = (Integer) data.get("lineNumber");
+    Object lineNumber = data.get("lineNumber");
 
-    if (className != null) navigate(project, className, lineNumber);
+    if (className != null) navigate(project, className, lineNumber instanceof Integer ? (Integer) lineNumber : 1);
   }
 
   /**
@@ -95,43 +94,33 @@ class NotificationListenerImpl implements Runnable, NotificationListener {
   }
 
   /**
-   * Navigates to a location in the given class
+   * Navigates to a location in the given class.
    *
    * @param pProject    Project to search in
    * @param pClass      FQN of a class to search in
-   * @param pLineNumber line number to scroll to
+   * @param pLineNumber line number to scroll to (1-based)
    */
   private void navigate(@NotNull Project pProject, @NotNull String pClass, int pLineNumber) {
-    ApplicationManager.getApplication().invokeLater(() -> ApplicationManager.getApplication().runReadAction(() -> {
-      if (!pProject.isInitialized()) {
-        return;
-      }
-
-      PsiClass psiClass = JavaPsiFacade.getInstance(pProject).findClass(pClass, GlobalSearchScope.allScope(pProject));
-
-      if (psiClass != null) {
-        FileEditorProviderManager editorProviderManager = FileEditorProviderManager.getInstance();
-        VirtualFile virtualFile = psiClass.getContainingFile().getVirtualFile();
-        if (virtualFile == null || editorProviderManager.getProviderList(pProject, virtualFile).isEmpty()) return;
-
-        Editor editor = FileEditorManager.getInstance(pProject).openTextEditor(new OpenFileDescriptor(pProject, virtualFile), true);
-        if (editor != null) {
-          if (pLineNumber > editor.getDocument().getLineCount()) {
+    ReadAction.nonBlocking(() -> {
+          PsiClass psiClass = JavaPsiFacade.getInstance(pProject).findClass(pClass, GlobalSearchScope.allScope(pProject));
+          PsiFile psiFile = psiClass == null ? null : psiClass.getContainingFile();
+          return psiFile == null ? null : psiFile.getVirtualFile();
+        })
+        .inSmartMode(pProject)
+        .expireWhen(pProject::isDisposed)
+        .finishOnUiThread(ModalityState.nonModal(), virtualFile -> {
+          if (virtualFile == null) {
+            NotificationGroupManager.getInstance().getNotificationGroup(NOTIFICATION_ID_WINDOW)
+                .createNotification("Swing Explorer", "Class not found: " + pClass, NotificationType.ERROR).notify(pProject);
             return;
           }
 
-          CaretModel caretModel = editor.getCaretModel();
-          LogicalPosition pos = new LogicalPosition(pLineNumber - 1, 0);
-          caretModel.moveToLogicalPosition(pos);
-          ApplicationManager.getApplication().invokeLater(() -> editor.getScrollingModel().scrollToCaret(ScrollType.CENTER));
-        }
-
-        ProjectUtil.focusProjectWindow(pProject, true);
-      } else {
-        //noinspection DialogTitleCapitalization
-        NotificationGroupManager.getInstance().getNotificationGroup(NOTIFICATION_ID_WINDOW)
-            .createNotification("Swing Explorer", "Class not found: " + pClass, NotificationType.ERROR).notify(pProject);
-      }
-    }));
+          OpenFileDescriptor descriptor = new OpenFileDescriptor(pProject, virtualFile, Math.max(pLineNumber - 1, 0), 0);
+          if (descriptor.canNavigate()) {
+            descriptor.navigate(true);
+            ProjectUtil.focusProjectWindow(pProject, true);
+          }
+        })
+        .submit(AppExecutorUtil.getAppExecutorService());
   }
 }

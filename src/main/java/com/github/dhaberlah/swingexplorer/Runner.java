@@ -4,7 +4,7 @@ import com.intellij.execution.ExecutionException;
 import com.intellij.execution.application.ApplicationConfiguration;
 import com.intellij.execution.configurations.*;
 import com.intellij.execution.impl.DefaultJavaProgramRunner;
-import com.intellij.execution.runners.*;
+import com.intellij.execution.runners.ExecutionEnvironment;
 import com.intellij.execution.target.TargetEnvironmentAwareRunProfileState;
 import com.intellij.execution.ui.RunContentDescriptor;
 import com.intellij.openapi.fileEditor.FileDocumentManager;
@@ -38,7 +38,7 @@ public class Runner extends DefaultJavaProgramRunner {
   @NotNull
   @Override
   protected Promise<RunContentDescriptor> doExecuteAsync(@NotNull TargetEnvironmentAwareRunProfileState pState, @NotNull ExecutionEnvironment pEnv) throws ExecutionException {
-    Project project = RunContentBuilder.fix(pEnv, this).getProject();
+    Project project = pEnv.getProject();
     if (!(pState instanceof JavaCommandLineState)) return super.doExecuteAsync(pState, pEnv);
     JavaCommandLineState state = (JavaCommandLineState) pState;
     int port = getFreePort();
@@ -58,7 +58,7 @@ public class Runner extends DefaultJavaProgramRunner {
 
   @Override
   protected RunContentDescriptor doExecute(@NotNull RunProfileState pState, @NotNull ExecutionEnvironment pEnv) throws ExecutionException {
-    Project project = RunContentBuilder.fix(pEnv, this).getProject();
+    Project project = pEnv.getProject();
     if (!(pState instanceof JavaCommandLineState)) return super.doExecute(pState, pEnv);
     JavaCommandLineState state = (JavaCommandLineState) pState;
     int port = getFreePort();
@@ -111,7 +111,7 @@ public class Runner extends DefaultJavaProgramRunner {
     try (ServerSocket serverSocket = new ServerSocket(0)) {
       return serverSocket.getLocalPort();
     } catch (IOException e) {
-      throw new ExecutionException("Could not open port!");
+      throw new ExecutionException("Could not open port!", e);
     }
   }
 
