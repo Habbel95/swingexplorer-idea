@@ -7,13 +7,8 @@ import com.intellij.execution.impl.DefaultJavaProgramRunner;
 import com.intellij.execution.runners.ExecutionEnvironment;
 import com.intellij.execution.target.TargetEnvironmentAwareRunProfileState;
 import com.intellij.execution.ui.RunContentDescriptor;
-import com.intellij.openapi.fileEditor.FileDocumentManager;
-import com.intellij.openapi.project.Project;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.concurrency.Promise;
-
-import java.io.IOException;
-import java.net.ServerSocket;
 
 /**
  * Gets called if the executor wants to execute a java program with swing explorer integration
@@ -38,81 +33,20 @@ public class Runner extends DefaultJavaProgramRunner {
   @NotNull
   @Override
   protected Promise<RunContentDescriptor> doExecuteAsync(@NotNull TargetEnvironmentAwareRunProfileState pState, @NotNull ExecutionEnvironment pEnv) throws ExecutionException {
-    Project project = pEnv.getProject();
-    if (!(pState instanceof JavaCommandLineState)) return super.doExecuteAsync(pState, pEnv);
-    JavaCommandLineState state = (JavaCommandLineState) pState;
-    int port = getFreePort();
-    Dependencies dependencies = new Dependencies();
-
-    // 1) Save Project
-    FileDocumentManager.getInstance().saveAllDocuments();
-
-    // 2) Expand Settings with SwingExplorer ones
-    initJavaSettings(state, dependencies, port);
-
-    // 3) Run and init listener
-    Promise<RunContentDescriptor> descr = super.doExecuteAsync(pState, pEnv);
-    descr.onSuccess(pDescr -> NotificationListenerImpl.create(project, port));
-    return descr;
+    if (!(pState instanceof JavaCommandLine javaState)) return super.doExecuteAsync(pState, pEnv);
+    int port = SwingExplorerSupport.patch(javaState.getJavaParameters());
+    return super.doExecuteAsync(pState, pEnv).onSuccess(pDescr -> {
+      if (pDescr != null) NotificationListenerImpl.create(pEnv.getProject(), port);
+    });
   }
 
   @Override
   protected RunContentDescriptor doExecute(@NotNull RunProfileState pState, @NotNull ExecutionEnvironment pEnv) throws ExecutionException {
-    Project project = pEnv.getProject();
-    if (!(pState instanceof JavaCommandLineState)) return super.doExecute(pState, pEnv);
-    JavaCommandLineState state = (JavaCommandLineState) pState;
-    int port = getFreePort();
-    Dependencies dependencies = new Dependencies();
-
-    // 1) Save Project
-    FileDocumentManager.getInstance().saveAllDocuments();
-
-    // 2) Expand Settings with SwingExplorer ones
-    initJavaSettings(state, dependencies, port);
-
-    // 3) Run and init listener
+    if (!(pState instanceof JavaCommandLine javaState)) return super.doExecute(pState, pEnv);
+    int port = SwingExplorerSupport.patch(javaState.getJavaParameters());
     RunContentDescriptor descr = super.doExecute(pState, pEnv);
-    if (descr != null) NotificationListenerImpl.create(project, port);
-
+    if (descr != null) NotificationListenerImpl.create(pEnv.getProject(), port);
     return descr;
-  }
-
-  /**
-   * Initializes the necessary java options in the commandLineState
-   *
-   * @param pProfileState          State to modify
-   * @param pDependencies          Information about the necessary .jar files for SwingExplorer
-   * @param pPort                  port to bind communication
-   * @param additionalVmParameters additional Parameters to add to the VM Parameter list
-   */
-  protected void initJavaSettings(@NotNull JavaCommandLineState pProfileState, @NotNull Dependencies pDependencies, int pPort, String... additionalVmParameters) throws ExecutionException {
-    pProfileState.getJavaParameters().getClassPath().add(pDependencies.getAgentFile());
-    pProfileState.getJavaParameters().getClassPath().add(pDependencies.getExplorerFile());
-
-    // Add VM Parameters
-    JavaParameters javaParameters = pProfileState.getJavaParameters();
-    ParametersList vmParametersList = javaParameters.getVMParametersList();
-    vmParametersList.add("-javaagent:" + pDependencies.getAgentFile().getPath());
-    vmParametersList.add("-Xbootclasspath/a:" + pDependencies.getAgentFile().getPath());
-    vmParametersList.add("-Dswex.mport=" + pPort);
-    vmParametersList.add("-Dcom.sun.management.jmxremote");
-    vmParametersList.addAll(additionalVmParameters);
-
-    // Replace main class with swingexplorer and add real main class as an argument
-    String mainClass = javaParameters.getMainClass();
-    javaParameters.setMainClass("org.swingexplorer.Launcher");
-    javaParameters.getProgramParametersList().addAt(0, mainClass);
-  }
-
-  /**
-   * @return a free, random port
-   */
-  private int getFreePort() throws ExecutionException {
-    try (ServerSocket serverSocket = new ServerSocket(0)) {
-      return serverSocket.getLocalPort();
-    } catch (IOException e) {
-      throw new ExecutionException("Could not open port!", e);
-    }
   }
 
 }

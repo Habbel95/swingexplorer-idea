@@ -20,9 +20,7 @@ If you install this plugin you two small yellow icons in your toolbar.
 They get enabled, if a java run configuration was selected.  
 Click on it, and it will start your program, combined with the SwingExplorer.  
 
-If you select the debug icon, you have to click the "Attach debugger" in the console window.
-
-![](Attach_debugger.png)
+If you select the debug icon, the program is started in debug mode and the debugger attaches automatically.
 
 The SwingExplorer will show up in a new window and looks like this:
 
